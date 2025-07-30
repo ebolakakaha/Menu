@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Danh sách món ăn</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 1rem;
+      background-color: #f9f9f9;
+      color: #333;
+    }
+    h3 {
+      margin-top: 2rem;
+    }
+    details {
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin-bottom: 1rem;
+    }
+    input, select, button {
+      padding: 0.5rem;
+      margin: 0.25rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    button {
+      cursor: pointer;
+      background-color: #007bff;
+      color: white;
+      border: none;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    button.danger {
+      background-color: #dc3545;
+    }
+    button.danger:hover {
+      background-color: #c82333;
+    }
+    .group-section, .output-section {
+      margin-bottom: 2rem;
+    }
+    .group {
+      background: #fff;
+      padding: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+    }
+    .item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+    }
+    .item span.name {
+      flex: 1;
+      cursor: pointer;
+    }
+    .group summary span.name {
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .output-section pre {
+      background-color: #efefef;
+      padding: 1rem;
+      border-radius: 6px;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  
+
+  
+<div class="group-section">
+  <input id="searchInput" placeholder="Tìm món ăn..." oninput="searchItems()" />
+</div>
+
+<div id="groupList" class="group-section"></div>
+
+  <div class="output-section">
+    <h3>Danh sách cần tắt:</h3>
+    <pre id="output"></pre>
+    <button onclick="generateList()">Tạo danh sách cần tắt</button>
+    </div>
+
+  <script>
+    let data = {};
+
+    const STORAGE_KEY = 'menuData';
+
+    function saveToStorage() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    
+async 
+async function loadFromStorage() {
+  try {
+    const response = await fetch('https://ebolakakaha.github.io/Menu/menu.json');
+    if (!response.ok) throw new Error('Lỗi tải dữ liệu');
+    data = await response.json();
+    updateGroups();
+  } catch (e) {
+    console.error("Không tải được dữ liệu từ GitHub:", e);
+    data = {};
+    updateGroups(); // fallback rỗng vẫn cần gọi để render giao diện
+  }
+}
+ catch (e) {
+    console.error("Không tải được dữ liệu từ GitHub:", e);
+    data = {};
+  }
+}
+      }
+    }
+
+    function handleEnter(e, action) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (action === 'addGroup') addGroup();
+        else if (action === 'addItem') addItem();
+      }
+    }
+
+    
+    
+    function updateGroups() {
+      const groupList = document.getElementById('groupList');
+      const groupSelect = document.getElementById('groupSelect');
+      const currentSelection = groupSelect.value;
+      groupList.innerHTML = '';
+      groupSelect.innerHTML = '';
+      Object.keys(data).forEach(group => {
+        groupSelect.innerHTML += `<option>${group}</option>`;
+        const groupDiv = document.createElement('details');
+        groupDiv.className = 'group';
+        groupDiv.innerHTML = `
+          <summary>
+            <span class="name" onclick="toggleGroupVisibility(event)">${group}</span>
+            
+          </summary>
+          <div id="group-${group}"></div>
+        `;
+        groupList.appendChild(groupDiv);
+        const itemsContainer = groupDiv.querySelector(`#group-${CSS.escape(group)}`);
+        data[group].forEach((item, index) => {
+          const div = document.createElement('div');
+          div.className = 'item';
+          div.innerHTML = `
+            <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleCheck('${group}', ${index}, this.checked)" />
+            <span class="name" onclick="toggleItem('${group}', ${index}, event)">${item.name}</span>
+            
+          `;
+          itemsContainer.appendChild(div);
+        });
+      });
+      groupSelect.value = currentSelection;
+    }
+
+    function toggleGroupVisibility(event) {
+      event.stopPropagation();
+    }
+
+    function toggleItem(group, index, event) {
+      event.stopPropagation();
+      data[group][index].checked = !data[group][index].checked;
+      updateGroups();
+      saveToStorage();
+    }
+
+    function toggleCheck(group, index, value) {
+      data[group][index].checked = value;
+      saveToStorage();
+    }
+
+        }
+
+        }
+
+    
+    
+    function generateList() {
+      const output = [];
+      Object.keys(data).forEach(group => {
+        const uncheckedItems = data[group].filter(item => !item.checked);
+        if (uncheckedItems.length) {
+          output.push(`${group}:`);
+          uncheckedItems.forEach(item => {
+            output.push(`- ${item.name}`);
+          });
+        }
+      });
+      document.getElementById('output').textContent = output.join('\n');
+    }
+
+    function copyToClipboard() {
+      const text = document.getElementById('output').textContent;
+      const temp = document.createElement("textarea");
+      temp.value = text;
+      document.body.appendChild(temp);
+      temp.select();
+      temp.setSelectionRange(0, 99999);
+      document.execCommand("copy");
+      document.body.removeChild(temp);
+      alert("✅ Danh sách đã được sao chép!");
+    }
+
+    function downloadJSON() {
+      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'menu.json';
+      a.click();
+    }
+
+          };
+      reader.readAsText(file);
+    }
+
+    
+function searchItems() {
+  const query = document.getElementById('searchInput').value.trim().toLowerCase();
+  const groupList = document.getElementById('groupList');
+  groupList.innerHTML = '';
+
+  Object.keys(data).forEach(group => {
+    const matchedItems = data[group].filter(item => item.name.toLowerCase().includes(query));
+    if (matchedItems.length > 0) {
+      const groupDiv = document.createElement('details');
+      groupDiv.className = 'group';
+      groupDiv.innerHTML = `
+        <summary>
+          <span class="name">${group}</span>
+        </summary>
+        <div id="group-${group}"></div>
+      `;
+      groupList.appendChild(groupDiv);
+      const itemsContainer = groupDiv.querySelector(`#group-${CSS.escape(group)}`);
+      matchedItems.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `
+          <input type="checkbox" ${item.checked ? 'checked' : ''} disabled />
+          <span class="name">${item.name}</span>
+        `;
+        itemsContainer.appendChild(div);
+      });
+    }
+  });
+
+  if (!query) updateGroups();
+}
+
+function moveItem(group, index, direction) {
+  const items = data[group];
+  const newIndex = index + direction;
+  if (newIndex >= 0 && newIndex < items.length) {
+    const temp = items[index];
+    items[index] = items[newIndex];
+    items[newIndex] = temp;
+    updateGroups();
+    saveToStorage();
+  }
+}
+
+function moveGroup(groupName, direction) {
+  const keys = Object.keys(data);
+  const index = keys.indexOf(groupName);
+  const newIndex = index + direction;
+  if (newIndex >= 0 && newIndex < keys.length) {
+    const entries = Object.entries(data);
+    const temp = entries[index];
+    entries[index] = entries[newIndex];
+    entries[newIndex] = temp;
+    data = Object.fromEntries(entries);
+    updateGroups();
+    saveToStorage();
+  }
+}
+
+function resetAllChecks() {
+  Object.keys(data).forEach(group => {
+    data[group].forEach(item => {
+      item.checked = true;
+    });
+  });
+  updateGroups();
+  saveToStorage();
+  alert("✅ Tất cả checkbox đã được tích lại.");
+}
+
+
+    // Load menu from localStorage when page loads
+    window.addEventListener('load', () => {
+      loadFromStorage();
+      updateGroups();
+    });
+  </script>
+</body>
+</html>
